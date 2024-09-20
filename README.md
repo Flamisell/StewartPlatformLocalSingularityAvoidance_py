@@ -6,6 +6,10 @@ This Colab notebook simulates a Stewart Platform with a Trapezoidal Velocity Tra
 * The **Controller** class handles control logic, issuing joint commands and tracking desired trajectories.
 * The **Simulation** class ties it all together, running dynamic simulations, visualizing real-time behavior, and analyzing performance.
   
+
+https://github.com/user-attachments/assets/abe4685e-5156-42af-a649-787ff14e775c
+
+
 ## Table of Contents
 
 - [Libraries](#libraries)
@@ -205,6 +209,10 @@ A series of plots is then generated to show the simulation's result.
 # Start Simulation
 sim.start()
 ```
+![outputstep31](https://github.com/user-attachments/assets/315509b1-60ae-4d06-ac07-8dbb2b96ff97)
+![outputstep32](https://github.com/user-attachments/assets/a40d9a4c-f599-49e3-88ef-de41682a9d13)
+![outputstep33](https://github.com/user-attachments/assets/2628ade4-3e1e-4edb-8732-8ca6939cefe7)
+
 ### Video Generation
 Generate the video from the simulation.
 
