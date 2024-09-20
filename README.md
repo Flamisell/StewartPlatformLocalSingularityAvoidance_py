@@ -9,6 +9,12 @@ This Colab notebook simulates a Stewart Platform with a Trapezoidal Velocity Tra
 
 https://github.com/user-attachments/assets/abe4685e-5156-42af-a649-787ff14e775c
 
+Elements in the video:
+*   In blue the Stewart Platform.
+*   In black the closest singular configuration.
+*   The static series of frames is the trajectory coming from the trapezoidal class.
+*   The dynamic series of frames is the real trajectory of the robot.
+*   In the top right corner is the table of the forces felt by the actuators under gravity (enumaration at the base of the platform).
 
 ## Table of Contents
 
