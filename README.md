@@ -5,7 +5,7 @@ This Colab notebook simulates a Stewart Platform with a Trapezoidal Velocity Tra
 * The **Trapezoidal Velocity** class manages trajectory planning, generating desired joint trajectories.
 * The **Controller** class handles control logic, issuing joint commands and tracking desired trajectories.
 * The **Simulation** class ties it all together, running dynamic simulations, visualizing real-time behavior, and analyzing performance.
-* 
+  
 ## Table of Contents
 
 - [Libraries](#libraries)
@@ -16,10 +16,10 @@ This Colab notebook simulates a Stewart Platform with a Trapezoidal Velocity Tra
   - [Simulation Class](#simulation-class)
 
 - [Code Execution](#code-execution)
-  - [Step 1](#step-1)
-  - [Step 2](#step-2)
-  - [Step 3](#step-3)
-  - [Step 4](#step-4)
+  - [Variables Definition](#variables-definition)
+  - [Initialization](#initialization)
+  - [Simulation](#simulation)
+  - [Video Generation](#video-generation)
 
 ## Libraries
 
@@ -136,8 +136,7 @@ In the  _updateSimulation_   function
 
 In this section, the steps necessary to use the various elements is shown
 
-### Step 1
-
+### Variables Definition
 1.   Mount the google drive.
 2.   Define the Platform parameters.
 3.   Upload the singularities (calculated offline with the *__find_singularity_workspace* stewart platform function).
@@ -163,7 +162,7 @@ with open('/content/drive/My Drive/Github/filtered_singularities_task_space_2.tx
 
 # singularities_task_space = np.array([[0,0,0,0,0,0],[0,0,0,0,0,0]]) # uncomment if no singularities are available
 ```
-### Step 2
+### Initialization
 
 1.   Initialize robot class.
 2.   Load the singularities into the robot object.
@@ -193,7 +192,7 @@ controller = Controller(platform,pose_i,pose_f,tf_seconds,max_joint_vel,K)
 # Initialize Simulation
 sim = Simulation(controller)
 ```
-### Step 3
+### Simulation
 Now that the robot, the controller with trapezoidal trajectory and the simulation are setted up.
 
 Start the simulation
@@ -206,7 +205,7 @@ A series of plots is then generated to show the simulation's result.
 # Start Simulation
 sim.start()
 ```
-### Step 4
+### Video Generation
 Generate the video from the simulation.
 
  Note: this may take some time as the animation is generated with matplotlib. In each second, five frames are generated.
