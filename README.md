@@ -15,13 +15,11 @@ This Colab notebook simulates a Stewart Platform with a Trapezoidal Velocity Tra
   - [Controller Class](#controller-class)
   - [Simulation Class](#simulation-class)
 
-- [Usage](#usage)
-  - [Singularity Search](#singularity-search)
-    - [Platform Initialization](#platform-initialization)
-    - [Find Singularities](find-singularities)
-    - [Filter Singularities](filter-singularities)
-  - [Closest Singularity Search and Visualization](#closest-singularity-search-and-visualization)
-- [Class Methods Overview](#class-methods-overview)
+- [Code Execution](#code-execution)
+  - [Step 1](#step-1)
+  - [Step 2](#step-2)
+  - [Step 3](#step-3)
+  - [Step 4](#step-4)
 
 ## Libraries
 
@@ -32,6 +30,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from IPython.display import HTML
 ```
 ## Classes Description
 
@@ -133,221 +132,96 @@ In the  _updateSimulation_   function
 
 
 
-## Usage
+## Code Execution
 
-### Singularity Search
-The steps to obtain an offline set of singular configurations is presented here below.
+In this section, the steps necessary to use the various elements is shown
 
-#### Platform Initialization
-This class has multiple purposes which will not be discussed here but can be found in my Stewart Platform Class repository, the key function that is used in this notebook is the *getSingularityWorkspace* function.
-By defining the workspace boundaries (in terms of position and orientation), the local condition index of the transposed Jacobian matrix is calculated for each pose telling us when Jabobian becomes singular.
+### Step 1
 
-To create an instance of the StewartPlatform class, you need to provide the following parameters:
-- r_b: Radius of the base.
-- phi_b: Angle between base joints.
-- r_p: Radius of the platform.
-- phi_p: Angle between platform joints.
+1.   Mount the google drive.
+2.   Define the Platform parameters.
+3.   Upload the singularities (calculated offline with the *__find_singularity_workspace* stewart platform function).
 
-It is also important to define limits on workspace position and orientation, this limits will define the boundaries of the search.
-```
-# Define parameters
+   
+```bash
+# access drive to load singularities
+drive.mount('/content/drive')
+
+# Platform definition
 r_b = 0.5  # Radius of base
 phi_b = 50  # Angle between base joints
 r_p = 0.3  # Radius of platform
 phi_p = 80  # Angle between platform joints
 
-# Create Stewart Platform instance
-platform = StewartPlatform(r_b, phi_b, r_p, phi_p) # Initialize platform
-pose=np.array([0,0,0.5,10,0,0]) # Define pose
-lengths= platform.getIK(pose) # Find Joint position
-k=platform.getLocalConditionIndexT() # Tells you how close you are to a singularity
-
-# Define workspace and orientation limints
+# Workspace Boundaries definition
 workspace_limits = [-0.5, 0.5, -0.5, 0.5, 0.1, 0.6]
 orientation_limits = [-10, 10, -10, 10, -10, 10]
-x_min, x_max, y_min, y_max, z_min, z_max = workspace_limits
-roll_min, roll_max, pitch_min, pitch_max, yaw_min, yaw_max = orientation_limits
-```
-Mount the drive
-```
-from google.colab import drive
-drive.mount('/content/drive')
-```
-#### Find Singularities
-Use *getSingularityWorkspace* to search for any pose which has a low local condition index. Note: this can be computationally expensive.
-```
-N_pos=10 # Discretization for workspace coordinates
-N_orient=10 # Discretization for orientation coordinates
-Holder=platform.getSingularityWorkspace(workspace_limits,orientation_limits,N_pos,N_orient) # find singularities in all space
-```
-Save the singularities onto drive for safety.
-```
- with open('/content/drive/My Drive/Github/singularities_2.txt', 'w') as f:
-     np.savetxt(f, Holder)
-```
-Load the whole singularity file.
-```
-with open('/content/drive/My Drive/Github/singularities_2.txt', 'r') as f:
-    singularities = np.loadtxt(f)
-```
-#### Filter Singularities
-*First Filtering*
 
-Slicing the matrix, removing the borders of the workspace (external singularities) and selecting only the poses with low local condition index.
-```
-keep_mask = (singularities[:, 6] < 0.001) & (singularities[:, 2] > z_min)& (singularities[:, 2] < z_max) & (singularities[:, 0] < x_max)& (singularities[:, 0] > x_min)& (singularities[:, 1] < y_max) & (singularities[:, 1] > y_min)
-interest_points_with_index=singularities[keep_mask]
-```
-*Second filtering*
-
-We normalize the singularities between the borders of the workspace, we then calculate the distance matrix between all of them and remove the configurations which are too close to each other.
-
-```
-from scipy.spatial.distance import cdist
-
-# take only poses
-interest_points=interest_points_with_index[:,:6]
-#normalize the singularities poses
-mins=np.array([x_min,y_min,z_min,roll_min,pitch_min,yaw_min])
-maxs=np.array([x_max,y_max,z_max,roll_max,pitch_max,yaw_max])
-normalized_interest_points = (interest_points - mins) / (maxs - mins)
-
-threshold=0.3
-distances = cdist(normalized_interest_points, normalized_interest_points)
-# To avoid self-comparison, set the diagonal to a large value
-np.fill_diagonal(distances, np.inf)
-
-index_holder=[]
-interest_points_holder=np.copy(interest_points_with_index)
-keep_mask = np.ones(normalized_interest_points.shape[0], dtype=bool)
-for i in range(normalized_interest_points.shape[0]):
-    interest_points_holder[i][6]=i
-    if keep_mask[i]:
-        # Find indices of vectors within the threshold distance
-        close_indices = np.where(distances[i] < threshold)[0]
-        # Set keep_mask to False for these indices
-        keep_mask[close_indices] = False
-        # Ensure we don't set the current vector's mask to False
-        keep_mask[i] = True
-
-
-interest_points_filtered=interest_points_holder[keep_mask] # kept singularities
-interest_points_deleted=interest_points_holder[~keep_mask] # removed singularities
-```
-Save singularities in task space and in joint space.
-```
-# Save the filtered singularities as task singularities
-singularities_task_space=np.copy(interest_points_filtered[:,:6])
-with open('/content/drive/My Drive/Github/filtered_singularities_task_space_2.txt', 'w') as f:
-    np.savetxt(f, singularities_task_space)
-
-# Save the filtered singularities as joint singularities
-singularities_joint_space=np.copy(interest_points_filtered[:,:6])
-for i in range(len(singularities_task_space)):
-  singularities_joint_space[i,:]=np.linalg.norm(platform.getIK(singularities_task_space[i,:]),axis=1)
-with open('/content/drive/My Drive/Github/filtered_singularities_joint_space_2.txt', 'w') as f:
-    np.savetxt(f, singularities_joint_space)
-```
-### Closest Singularity Search and Visualization
-In this section is shown how to search for the closest singularity given a configuration of the platform and how to visualize the singularity space in both position and orientation space. Note: stewart platform's singularities live in R6, to visualize them we need to fix either position or orientation of the platform.
-
-Load singularities from the drive
-```
+# load singularities into google colab
 with open('/content/drive/My Drive/Github/filtered_singularities_task_space_2.txt', 'r') as f:
     singularities_task_space = np.loadtxt(f)
 
-with open('/content/drive/My Drive/Github/filtered_singularities_joint_space_2.txt', 'r') as f:
-    singularities_joint_space = np.loadtxt(f)
+# singularities_task_space = np.array([[0,0,0,0,0,0],[0,0,0,0,0,0]]) # uncomment if no singularities are available
 ```
-Find the closest singularity to defined position.
+### Step 2
 
-Check local condition index and the actuator forces in pose and singularity.
+1.   Initialize robot class.
+2.   Load the singularities into the robot object.
+3.   Define the controller's parameters and  initialize the controller. By initializing the controller, the trapezoidal velocity profile class is automatically constructed. Warning will pop up if the chosen set of speed and time does not meet the trapezoidal profile constraints.
+4.   Initialize the simulation.
+   
+```bash
+# Platform initialization
+platform = StewartPlatform(r_b , phi_b , r_p, phi_p)
+# Loading Singularities into robot.
+platform.loadSingularitiesTaskSpace(singularities_task_space,workspace_limits,orientation_limits) # be coherent with the limits used for getSingularityWorkspace() function
+
+# Define initial and final position
+pose_i=np.array([0.3,0.1,0.5,0,-10,0]) # Note: FK algorithm does not like high values for angles.
+pose_f=singularities_task_space[230]
+
+# Define final time
+tf_seconds=20 # defines the time in which you would like to reach the final pose
+
+# Define controller parameters
+max_joint_vel=0.03 # [m/s] # define max joint velocities
+K=np.array([1,1,1,0.03,0.03,0.03])*0.5 # define proportional gain for the controller
+
+# Initialize controller
+controller = Controller(platform,pose_i,pose_f,tf_seconds,max_joint_vel,K)
+
+# Initialize Simulation
+sim = Simulation(controller)
 ```
-# find the closest singularity.
-pose=np.array([0,0.35,0.2,0,0,0])
-mins=np.array([x_min,y_min,z_min,roll_min,pitch_min,yaw_min])
-maxs=np.array([x_max,y_max,z_max,roll_max,pitch_max,yaw_max])
-mins = np.array(mins)
-maxs = np.array(maxs)
+### Step 3
+Now that the robot, the controller with trapezoidal trajectory and the simulation are setted up.
 
-# Normalize each component
-normalized_pose = (pose - mins) / (maxs - mins)
-# print(normalized_pose)
-normalized_singularities=(singularities_task_space-mins)/(maxs-mins)
-# print(normalized_singularities)
-distances = np.linalg.norm(normalized_singularities - normalized_pose, axis=1)
-# print(distances)
-# # Find the index of the minimum distance
-min_index = np.argmin(distances)
-# print(distances[min_index])
+Start the simulation
 
-# # Return the closest vector
-closest_vector = singularities_task_space[min_index]
+If, during the trajectory, the robot passes too close to a singularity, warnings will pop up.
 
+A series of plots is then generated to show the simulation's result.
 
-k=platform.getLocalConditionIndexT()
-lengths=platform.getIK(pose)
-k=platform.getLocalConditionIndexT()
-Fg=np.array([-10,0,0,0,0,0])
-
-joint_forces=platform.getActuatorForces(Fg)
-platform.plot()
-print("pose :", pose)
-print("local condition number T :", k)
-print("joint_forces :", joint_forces)
-
-
-lengths=platform.getIK(closest_vector)
-platform.plot()
-k=platform.getLocalConditionIndexT()
-joint_forces=platform.getActuatorForces(Fg)
-print("closest singularity :", closest_vector)
-print("local condition number T :", k)
-print("joint_forces :", joint_forces)
+```bash
+# Start Simulation
+sim.start()
 ```
-<img src="https://github.com/Flamisell/StewartPlatformSingularities_py/blob/main/img/stewart1.png" width="400"> <img src="https://github.com/Flamisell/StewartPlatformSingularities_py/blob/main/img/Stewart22.png" width="450">
+### Step 4
+Generate the video from the simulation.
+
+ Note: this may take some time as the animation is generated with matplotlib. In each second, five frames are generated.
+
+Elements:
 
 
-It is possible to plot 3d the singularity planes as long as we fix either position or orientation.
-We can use plotly libraries to clearly see the planes. I will leave the code directly in the colab file.
+*   In blue the Stewart Platform.
+*   In black the closest singular configuration.
+*   The static series of frames is the trajectory coming from the trapezoidal class.
+*   The dynamic series of frames is the real trajectory of the robot.
+*   In the top right corner is the table of the forces felt by the actuators under gravity (enumaration at the base of the platform).
+  
+```bash
+ # Generate video
+HTML(sim.anim.to_html5_video())
 ```
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-```
-**Fixing Position**
-```
-# Choose a position
-position = np.array([-0.45,0.1,0.2])
 
-N=10 # discretization of space
-choice=6 # choose choice 6 for local condition index
-orientation_limits = [-10, 10, -10, 10, -10, 10] # use same orientation limits as singularity search
-roll_min, roll_max, pitch_min, pitch_max, yaw_min, yaw_max = orientation_limits
-
-# use the getIndexWorkspaceOrientation function to see how the local condition index changes when orienting the platform
-workspace_indices_orientation = platform.getIndexWorkspaceOrientation(position, orientation_limits, N, choice)
-```
-<img src="https://github.com/Flamisell/StewartPlatformSingularities_py/blob/main/img/FixingPos.png" width="400">
-
-**Fixing Orientation**
-```
-# Choose an orientation
-orientation = np.array([8,7,5]) # RPY
-N=10 # discretization of space
-choice=6 # choose choice 6 for local condition index
-workspace_limits = [-0.5, 0.5, -0.5, 0.5, 0.1, 0.6] # use same workspace limits as singularity search
-x_min, x_max, y_min, y_max, z_min, z_max = workspace_limits
-
-# use the getIndexWorkspacePosition function to see how the local condition index changes when positioning the platform
-workspace_indices_position = platform.getIndexWorkspacePosition(orientation, workspace_limits, N, choice)
-```
-<img src="https://github.com/Flamisell/StewartPlatformSingularities_py/blob/main/img/FixingOr.png" width="400">
-
-## Class Methods Overview
-- **getIK(pose):** Computes inverse kinematics.
-- **getFK(starting_pose, lengths_desired):** Computes forward kinematics.
-- **getLocalConditionIndexT():** Calculates the local condition index of Transposed Jacobian
-- **getPlatformForces(F_actuators):** Computes platform forces from actuator forces.
-- **getSingularityWorkspace(workspace_limits,orientation_limits,N_pos,N_orient):** Evaluate singularities over a range of positions in the workspace.
-- **plot():** Plots the Stewart platform configuration.
