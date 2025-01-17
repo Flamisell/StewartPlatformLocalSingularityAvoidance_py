@@ -35,7 +35,7 @@ Elements in the video:
 
 Needed libraries:
 
-```bash
+```python
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
@@ -152,7 +152,7 @@ In this section, the steps necessary to use the various elements is shown
 3.   Upload the singularities (calculated offline with the *__find_singularity_workspace* stewart platform function).
 
    
-```bash
+```python
 # access drive to load singularities
 drive.mount('/content/drive')
 
@@ -179,7 +179,7 @@ with open('/content/drive/My Drive/Github/filtered_singularities_task_space_2.tx
 3.   Define the controller's parameters and  initialize the controller. By initializing the controller, the trapezoidal velocity profile class is automatically constructed. Warning will pop up if the chosen set of speed and time does not meet the trapezoidal profile constraints.
 4.   Initialize the simulation.
    
-```bash
+```python
 # Platform initialization
 platform = StewartPlatform(r_b , phi_b , r_p, phi_p)
 # Loading Singularities into robot.
@@ -211,7 +211,7 @@ If, during the trajectory, the robot passes too close to a singularity, warnings
 
 A series of plots is then generated to show the simulation's result.
 
-```bash
+```python
 # Start Simulation
 sim.start()
 ```
@@ -233,7 +233,7 @@ Elements:
 *   The dynamic series of frames is the real trajectory of the robot.
 *   In the top right corner is the table of the forces felt by the actuators under gravity (enumaration at the base of the platform).
   
-```bash
+```python
  # Generate video
 HTML(sim.anim.to_html5_video())
 ```
